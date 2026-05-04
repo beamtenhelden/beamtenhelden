@@ -6,19 +6,20 @@
   <title>Beamtenhelden · Versicherung für Beamte</title>
   <meta name="description" content="Versicherungsmakler spezialisiert auf Beamte, Referendare und Anwärter. Beihilfe, DU, Altersvorsorge – kostenlos und unverbindlich beraten." />
 
-  <!-- Fonts -->
+ <!-- 1. NEUE FONTS LADEN (Source Sans 3 in allen Branding-Gewichten) -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,400;1,9..144,500;1,9..144,600&family=Source+Sans+3:wght@200;300;400;500;600;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@200;300;400;500;600;700;900&display=swap" rel="stylesheet" />
 
-  <!-- Tailwind via CDN -->
+  <!-- 2. TAILWIND KONFIGURATION (Zuweisung der Branding-Schrift) -->
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
       theme: {
         extend: {
           fontFamily: {
-            display: ['Fraunces', 'Georgia', 'serif'],
+            // Überall Source Sans 3 für einen progressiven, klaren Look
+            display: ['"Source Sans 3"', 'sans-serif'],
             body: ['"Source Sans 3"', 'sans-serif'],
           },
         },
@@ -27,9 +28,17 @@
   </script>
 
   <style>
-    html, body { font-family: 'Source Sans 3', sans-serif; }
-    .font-display { font-family: 'Fraunces', Georgia, serif; font-optical-sizing: auto; }
-    .font-body { font-family: 'Source Sans 3', sans-serif; }
+    /* Globale Grundeinstellung */
+    html, body { 
+      font-family: 'Source Sans 3', sans-serif; 
+      -webkit-font-smoothing: antialiased;
+    }
+    
+    /* Definition der Klassen für klare Hierarchie */
+    .font-display { font-family: 'Source Sans 3', sans-serif; font-weight: 700; }
+    .font-body { font-family: 'Source Sans 3', sans-serif; font-weight: 300; }
+    
+    /* Hier folgen deine restlichen Animationen (@keyframes etc.) */
 
     @keyframes floatA { 0%, 100% { transform: translate(0, 0) rotate(0deg); } 50% { transform: translate(14px, -18px) rotate(3deg); } }
     @keyframes floatB { 0%, 100% { transform: translate(0, 0) rotate(0deg); } 50% { transform: translate(-16px, 12px) rotate(-2deg); } }
