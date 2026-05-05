@@ -148,6 +148,20 @@
       background: rgba(255,255,255,0.15);
       border-color: rgba(255,255,255,0.25);
     }
+    /* HIER EINFÜGEN: Rechner-Zusatzstile */
+    .choice-card.selected { 
+      border-color: #030039 !important; 
+      background: rgba(3,0,57,0.03) !important; 
+      box-shadow: 0 0 0 2px #030039; 
+    }
+    .bl-chip.selected { background: #030039 !important; color: white !important; }
+    .fam-btn.selected { background: #030039 !important; color: white !important; }
+    .prog-seg { background: rgba(3,0,57,0.1); }
+    .prog-seg.active { background: #2200c8 !important; position: relative; overflow: hidden; }
+    .prog-seg.done { background: #00bd9e !important; }
+    
+    /* Animation für die Rechner-Schritte */
+    .step-enter { animation: fadeUp 0.5s ease-out forwards; }
   </style>
 </head>
 <body class="min-h-screen bg-[#fafaf7] text-[#030039] antialiased overflow-x-hidden">
@@ -372,7 +386,67 @@
       <div id="reels-scroll" class="flex gap-4 overflow-x-auto pb-6 snap-x snap-mandatory custom-scroll"></div>
     </div>
   </section>
+<!-- PKV RECHNER INTEGRATION -->
+<section id="rechner" class="py-24 md:py-32 bg-[#fafaf7] relative overflow-hidden">
+  <div class="max-w-7xl mx-auto px-6 md:px-10">
+    <div class="grid md:grid-cols-12 gap-12 items-start">
+      
+      <!-- Linke Seite: Der Rechner -->
+      <div class="md:col-span-7 lg:col-span-8">
+        <div class="fade-up mb-10 flex items-center gap-3">
+          <span class="w-6 h-[1px] bg-[#030039]/40"></span>
+          <span class="text-xs tracking-[0.25em] uppercase text-[#030039]/70 font-medium">PKV-Sofort-Check</span>
+        </div>
+        
+        <!-- Progress Bar -->
+        <div id="progressWrap" class="mb-10">
+          <div class="flex gap-2 mb-3">
+            <div class="prog-seg h-[3px] rounded-full flex-1 bg-[#030039]/10" id="seg1"></div>
+            <div class="prog-seg h-[3px] rounded-full flex-1 bg-[#030039]/10" id="seg2"></div>
+            <div class="prog-seg h-[3px] rounded-full flex-1 bg-[#030039]/10" id="seg3"></div>
+            <div class="prog-seg h-[3px] rounded-full flex-1 bg-[#030039]/10" id="seg4"></div>
+          </div>
+          <div class="flex justify-between items-center text-[10px] tracking-widest uppercase font-bold">
+            <span id="progLabel" class="text-[#030039]/50">Schritt 1 von 4</span>
+            <span id="progPct" class="text-[#2200c8]">25%</span>
+          </div>
+        </div>
 
+        <!-- Die Steps (Container für JS) -->
+        <div id="rechner-content" class="min-h-[400px]">
+            <!-- Hier wird der Content per JavaScript injiziert (siehe unten) -->
+        </div>
+      </div>
+
+      <!-- Rechte Seite: Info-Sidebar -->
+      <div class="md:col-span-5 lg:col-span-4 sticky top-28 space-y-6">
+        <div class="bg-[#030039] rounded-3xl p-8 text-white relative overflow-hidden shadow-2xl">
+          <div class="relative z-10">
+            <div class="text-[10px] tracking-[0.3em] uppercase text-white/50 mb-4 font-bold">GKV-Fakten 2025</div>
+            <div class="space-y-4">
+              <div>
+                <div class="font-display text-3xl tracking-tight text-white">17,1 %</div>
+                <div class="text-xs text-white/50 font-light">GKV-Gesamtsatz (inkl. Zusatzbeitrag)</div>
+              </div>
+              <div class="w-full h-[1px] bg-white/10"></div>
+              <div>
+                <div class="font-display text-3xl tracking-tight text-[#51bdff]">0 €</div>
+                <div class="text-xs text-white/50 font-light">Dienstherren-Zuschuss zur GKV</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="bg-white rounded-3xl p-8 border border-[#030039]/5 shadow-sm">
+          <div class="text-[10px] tracking-[0.3em] uppercase text-[#030039]/40 mb-4 font-bold">Warum PKV?</div>
+          <p class="text-sm text-[#030039]/70 leading-relaxed font-light">
+            Beamte erhalten <strong>Beihilfe (50-70%)</strong>. In der PKV versicherst du nur den Restanteil. In der GKV zahlst du oft den <strong>vollen Beitrag</strong> auf dein gesamtes Einkommen.
+          </p>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
   <!-- FAQ -->
   <section id="faq" class="py-24 md:py-32 bg-white border-y border-[#030039]/5">
     <div class="max-w-7xl mx-auto px-6 md:px-10">
@@ -922,6 +996,202 @@ function buildReels() {
     setActiveAdvisor(0);
     initNav();
     initHeroParallax();
+// 1. RECHNER STATE & DATEN
+const R_STATE = { status: null, bl: null, year: null, fam: null };
+const R_CONST = {
+    brutto: { anwaerter: 1350, probe: 3100, lebenszeit: 3800 },
+    gkvSatz: 0.171 + 0.042 // KV + PV kinderlos 2025
+};
+
+// 2. FUNKTION: STATUS WÄHLEN
+window.selectStatus = function(val) {
+    R_STATE.status = val;
+    // Visuelles Feedback
+    document.querySelectorAll('.choice-card').forEach(c => c.classList.remove('selected'));
+    document.getElementById('card-' + val).classList.add('selected');
+    // Button aktivieren
+    const btn = document.getElementById('next1');
+    btn.disabled = false;
+    btn.classList.remove('opacity-30');
+};
+
+// 3. FUNKTION: STEP 1 RENDERN
+function renderStep1() {
+    const container = document.getElementById('rechner-content');
+    if(!container) return;
+    
+    container.innerHTML = `
+        <div class="step-enter">
+            <h3 class="font-display text-2xl md:text-3xl mb-6 text-[#030039]">Ich bin aktuell...</h3>
+            <div class="grid gap-3">
+                ${[
+                    {id: 'anwaerter', label: 'Anwärter / Referendar'},
+                    {id: 'probe', label: 'Beamter auf Probe'},
+                    {id: 'lebenszeit', label: 'Beamter auf Lebenszeit'}
+                ].map(s => `
+                    <div onclick="selectStatus('${s.id}')" id="card-${s.id}" 
+                         class="choice-card bg-white p-5 rounded-2xl border border-[#030039]/10 cursor-pointer transition-all">
+                        <div class="font-display text-lg">${s.label}</div>
+                    </div>
+                `).join('')}
+            </div>
+            <button onclick="renderStep2()" id="next1" disabled 
+                    class="btn-primary mt-8 w-full md:w-auto px-10 py-4 bg-[#030039] text-white rounded-full opacity-30 transition-all font-medium">
+                <span class="relative z-10">Weiter</span>
+            </button>
+        </div>
+    `;
+}
+
+// 4. HILFSFUNKTION FÜR PROGRESS
+function updateRechnerProgress(step) {
+    for (let i = 1; i <= 4; i++) {
+        const seg = document.getElementById('seg' + i);
+        if(!seg) continue;
+        seg.classList.remove('active', 'done');
+        if (i < step) seg.classList.add('done');
+        if (i === step) seg.classList.add('active');
+    }
+    document.getElementById('progLabel').textContent = `Schritt ${step} von 4`;
+    document.getElementById('progPct').textContent = (step * 25) + '%';
+}
+
+// 5. INITIALISIERUNG BEIM LADEN
+function initRechner() {
+    renderStep1();
+    updateRechnerProgress(1);
+}
+
+// Ruf die Funktion auf
+initRechner();// 6. FUNKTION: BUNDESLAND WÄHLEN
+window.selectBL = function(val) {
+    R_STATE.bl = val;
+    document.querySelectorAll('.bl-chip').forEach(c => c.classList.remove('selected'));
+    event.target.classList.add('selected');
+    document.getElementById('next2').disabled = false;
+    document.getElementById('next2').classList.remove('opacity-30');
+};
+
+window.renderStep2 = function() {
+    updateRechnerProgress(2);
+    const bundeslaender = ['Bayern','Baden-Württemberg','NRW','Hessen','Sachsen','Berlin','Hamburg','Niedersachsen','Andere'];
+    const container = document.getElementById('rechner-content');
+    
+    container.innerHTML = `
+        <div class="step-enter">
+            <h3 class="font-display text-2xl md:text-3xl mb-4 text-[#030039]">Mein Bundesland...</h3>
+            <p class="text-sm text-[#030039]/60 mb-6 italic">Die Beihilfesätze unterscheiden sich je nach Region.</p>
+            <div class="flex flex-wrap gap-2">
+                ${bundeslaender.map(bl => `
+                    <button onclick="selectBL('${bl}')" class="bl-chip px-5 py-2.5 border border-[#030039]/10 rounded-full text-sm font-medium transition-all bg-white text-[#030039]">
+                        ${bl}
+                    </button>
+                `).join('')}
+            </div>
+            <div class="flex gap-3 mt-8">
+                <button onclick="renderStep3()" id="next2" disabled class="btn-primary flex-1 md:flex-none px-10 py-4 bg-[#030039] text-white rounded-full opacity-30 font-medium"><span class="relative z-10">Weiter</span></button>
+                <button onclick="renderStep1()" class="px-6 py-4 border border-[#030039]/10 rounded-full text-sm font-medium">Zurück</button>
+            </div>
+        </div>
+    `;
+};
+
+// 7. FUNKTION: ALTER & FAMILIE
+window.checkStep3 = function() {
+    const year = document.getElementById('birthYear').value;
+    const fam = R_STATE.fam;
+    const btn = document.getElementById('next3');
+    if(year && fam) {
+        R_STATE.year = year;
+        btn.disabled = false;
+        btn.classList.remove('opacity-30');
+    }
+};
+
+window.selectFam = function(val) {
+    R_STATE.fam = val;
+    document.querySelectorAll('.fam-btn').forEach(b => b.classList.remove('selected'));
+    event.target.classList.add('selected');
+    checkStep3();
+};
+
+window.renderStep3 = function() {
+    updateRechnerProgress(3);
+    const container = document.getElementById('rechner-content');
+    const years = [];
+    for(let y = 2007; y >= 1965; y--) years.push(y);
+
+    container.innerHTML = `
+        <div class="step-enter">
+            <h3 class="font-display text-2xl md:text-3xl mb-8 text-[#030039]">Fast geschafft...</h3>
+            <div class="grid md:grid-cols-2 gap-6">
+                <div>
+                    <label class="block text-[10px] tracking-widest uppercase font-bold mb-3 text-[#030039]/40">Geburtsjahr</label>
+                    <select id="birthYear" onchange="checkStep3()" class="w-full p-4 bg-white border border-[#030039]/10 rounded-2xl outline-none focus:border-[#2200c8]">
+                        <option value="">Bitte wählen</option>
+                        ${years.map(y => `<option value="${y}">${y}</option>`).join('')}
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-[10px] tracking-widest uppercase font-bold mb-3 text-[#030039]/40">Familienstand</label>
+                    <div class="grid grid-cols-2 gap-2">
+                        <button onclick="selectFam('ledig')" class="fam-btn p-4 border border-[#030039]/10 rounded-2xl text-sm font-medium bg-white transition-all">Ledig</button>
+                        <button onclick="selectFam('kinder')" class="fam-btn p-4 border border-[#030039]/10 rounded-2xl text-sm font-medium bg-white transition-all">Kinder</button>
+                    </div>
+                </div>
+            </div>
+            <div class="flex gap-3 mt-8">
+                <button onclick="renderStep4()" id="next3" disabled class="btn-primary flex-1 md:flex-none px-10 py-4 bg-[#030039] text-white rounded-full opacity-30 font-medium"><span class="relative z-10">Ergebnis berechnen</span></button>
+                <button onclick="renderStep2()" class="px-6 py-4 border border-[#030039]/10 rounded-full text-sm font-medium">Zurück</button>
+            </div>
+        </div>
+    `;
+};
+
+// 8. FUNKTION: DAS ERGEBNIS
+window.renderStep4 = function() {
+    updateRechnerProgress(4);
+    const age = 2025 - parseInt(R_STATE.year);
+    const brutto = R_CONST.brutto[R_STATE.status];
+    
+    // GKV Logik (vereinfacht für 2025)
+    const gkvBeitrag = Math.round(brutto * R_CONST.gkvSatz);
+    
+    // PKV Schätzung (Anwärter vs Vollbeamte)
+    let pkvBeitrag = R_STATE.status === 'anwaerter' ? 75 : (age < 35 ? 240 : 310);
+    const ersparnis = gkvBeitrag - pkvBeitrag;
+
+    const container = document.getElementById('rechner-content');
+    container.innerHTML = `
+        <div class="step-enter">
+            <div class="mb-6 p-6 bg-[#030039] text-white rounded-3xl relative overflow-hidden">
+                <div class="relative z-10">
+                    <div class="text-[10px] tracking-[0.3em] uppercase mb-2 opacity-60">Deine monatliche Ersparnis</div>
+                    <div class="font-display text-5xl md:text-6xl tracking-tighter">ca. ${ersparnis} €</div>
+                    <div class="text-sm opacity-70 mt-2">gegenüber der gesetzlichen Kasse (GKV)</div>
+                </div>
+            </div>
+            
+            <div class="grid grid-cols-2 gap-4 mb-8">
+                <div class="p-5 bg-white border border-[#030039]/5 rounded-2xl">
+                    <div class="text-[10px] uppercase opacity-40 mb-1">GKV Kosten</div>
+                    <div class="font-display text-xl text-[#fc5b47]">${gkvBeitrag} €</div>
+                </div>
+                <div class="p-5 bg-white border border-[#030039]/5 rounded-2xl">
+                    <div class="text-[10px] uppercase opacity-40 mb-1">PKV Beitrag ab</div>
+                    <div class="font-display text-xl text-[#00bd9e]">${pkvBeitrag} €</div>
+                </div>
+            </div>
+
+            <div class="flex flex-col gap-3">
+                <a href="#berater" class="btn-primary w-full p-4 bg-[#030039] text-white rounded-full text-center font-medium">
+                    <span class="relative z-10">Genaue Berechnung anfordern</span>
+                </a>
+                <button onclick="renderStep1()" class="text-xs text-[#030039]/40 hover:text-[#030039] transition">Berechnung neu starten</button>
+            </div>
+        </div>
+    `;
+};
   </script>
 </body>
 </html>
